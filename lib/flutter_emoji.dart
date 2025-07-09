@@ -4,6 +4,7 @@ import 'dart:convert';
 
 import 'package:characters/characters.dart';
 import 'package:http/http.dart' as http;
+import 'emoji.dart' as emoji_data;
 
 ///
 /// Constants defined for Emoji.
@@ -149,6 +150,36 @@ class EmojiParser {
   Future<void> initServerData() async {
     final response = await http.get(Uri.parse(EMOJI_SOURCE));
     _init(response.body);
+  }
+
+  void initPythonEmojiData() {
+    // Clear existing data
+    _emojisByName.clear();
+    _emojisByCode.clear();
+
+    emoji_data.pythonEmojiData.forEach((emojiChar, details) {
+      if (details is Map<String, dynamic> && details.containsKey('en')) {
+        String name = details['en'] as String;
+
+        // Remove colons from the name if present
+        name = EmojiUtil.stripColons(name) ?? name;
+
+        // Create and store emoji object
+        final emoji = Emoji(name, emojiChar);
+        _emojisByName[name] = emoji;
+        _emojisByCode[EmojiUtil.stripNSM(emojiChar)] = emoji;
+
+        // Add aliases if available
+        if (details.containsKey('alias') && details['alias'] is List) {
+          for (String alias in details['alias']) {
+            String cleanAlias = EmojiUtil.stripColons(alias) ?? alias;
+            // Create emoji object with alias name
+            final aliasEmoji = Emoji(cleanAlias, emojiChar);
+            _emojisByName[cleanAlias] = aliasEmoji;
+          }
+        }
+      }
+    });
   }
 
   void _init(String dataset) {
